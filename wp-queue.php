@@ -84,12 +84,16 @@ class WP_Queue {
 									'exception' => $exception,
 								];
 
+								$data['handler'] = $callback;
+
 								self::enqueue( 'dead-letter', $data );
 							} catch ( Exception $exception ) {
 								$data['exception'] = [
 									'type'      => 'Exception',
 									'exception' => $exception,
 								];
+
+								$data['handler'] = $callback;
 
 								self::enqueue( 'dead-letter', $data );
 							}
