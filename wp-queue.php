@@ -10,17 +10,56 @@
 * License: GPL3+
 */
 
+/**
+ * Class WP_Queue
+ *
+ * A simply powerful WordPress Queue
+ */
 class WP_Queue {
-	public static function enqueue( $topic, $data, $delay = 0 ) {
+
+	/**
+	 * @var array The queue
+	 */
+	private $queue = [];
+
+	/**
+	 * @var array Subscriptions
+	 */
+	private static $subscriptions = [];
+
+	/**
+	 * WP_Queue constructor.
+	 *
+	 * Creates a queue object for dequeueing off the queue. Use the static functions to enqueue things.
+	 */
+	public function __construct() {
+		add_action( 'all', [ $this, 'ready_queue' ], 2 );
+		register_shutdown_function( [ $this, 'dequeue' ] );
+	}
+
+	/**
+	 * Put data on the queue
+	 *
+	 * @param string $topic The topic to post the data to
+	 * @param mixed $data The data to put on the topic
+	 * @param int $delay The number of seconds to delay the data
+	 */
+	public static function enqueue( string $topic, $data, int $delay = 0 ) {
 		wp_schedule_single_event( time() + $delay, 'pop_wp_queue_' . sha1( $topic . '_' . microtime() ), [
 			[
 				'data'  => $data,
-				'topic' => $topic
+				'topic' => $topic,
 			]
 		] );
 	}
 
-	public static function subscribe( $topic, $callback ) {
+	/**
+	 * Subscribe to a topic
+	 *
+	 * @param string $topic The topic to subscribe to
+	 * @param callable $callback The callback to receive data at
+	 */
+	public static function subscribe( string $topic, callable $callback ) {
 		if ( ! isset( $subscriptions[ $topic ] ) ) {
 			self::$subscriptions[ $topic ] = [];
 		}
@@ -28,9 +67,9 @@ class WP_Queue {
 		self::$subscriptions[ $topic ][] = $callback;
 	}
 
-	private $queue = [];
-	private static $subscriptions = [];
-
+	/**
+	 * Takes items off the queue. Called during php shutdown.
+	 */
 	public function dequeue() {
 		foreach ( $this->queue as $topic => &$queue ) {
 			foreach ( $queue as &$data ) {
@@ -45,11 +84,12 @@ class WP_Queue {
 		}
 	}
 
-	public function __construct() {
-		add_action( 'all', [ $this, 'ready_queue' ], 2 );
-		register_shutdown_function( [ $this, 'dequeue' ] );
-	}
-
+	/**
+	 * Handle's hooks, looking for enqueue hooks and dropping them on the queue.
+	 *
+	 * @param string $tag The hook name
+	 * @param array $data The args for the hook
+	 */
 	public function ready_queue( $tag, $data ) {
 		if ( strpos( $tag, 'pop_wp_queue' ) === 0 ) {
 			$data = &$data[0];
