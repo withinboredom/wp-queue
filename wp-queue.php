@@ -76,7 +76,23 @@ class WP_Queue {
 				if ( isset( self::$subscriptions[ $topic ] ) ) {
 					foreach ( self::$subscriptions[ $topic ] as &$callback ) {
 						if ( is_callable( $callback ) ) {
-							$callback( $data['data'] );
+							try {
+								$callback( $data['data'] );
+							} catch ( Throwable $exception ) {
+								$data['exception'] = [
+									'type'      => 'Throwable',
+									'exception' => $exception,
+								];
+
+								self::enqueue( 'dead-letter', $data );
+							} catch ( Exception $exception ) {
+								$data['exception'] = [
+									'type'      => 'Exception',
+									'exception' => $exception,
+								];
+
+								self::enqueue( 'dead-letter', $data );
+							}
 						}
 					}
 				}
